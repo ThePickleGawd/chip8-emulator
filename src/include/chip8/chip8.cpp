@@ -1,9 +1,13 @@
 #include "chip8.h"
-#include <cstdint>
-#include <fstream>
 #include <chrono>
-#include <random>
+#include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <random>
+
+const unsigned int FONTSET_SIZE = 80;
+const unsigned int FONTSET_START_ADDRESS = 0x50;
+const unsigned int START_ADDRESS = 0x200;
 
 uint8_t fontset[FONTSET_SIZE] =
     {
@@ -25,7 +29,8 @@ uint8_t fontset[FONTSET_SIZE] =
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
-Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().count())
+Chip8::Chip8()
+    : randGen(std::chrono::system_clock::now().time_since_epoch().count())
 {
     // Initialize PC
     pc = START_ADDRESS;
@@ -36,7 +41,7 @@ Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().cou
         memory[FONTSET_START_ADDRESS + i] = fontset[i];
     }
 
-    // Init RNG
+    // Initialize RNG
     randByte = std::uniform_int_distribution<uint8_t>(0, 255U);
 
     // Set up function pointer table
@@ -98,27 +103,21 @@ Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().cou
 
 void Chip8::LoadROM(char const *filename)
 {
-    // Open file a a stream of binary and move the file pointer to the end
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
 
     if (file.is_open())
     {
-        // Get size of file and allocate a buffer to hold the contents
         std::streampos size = file.tellg();
         char *buffer = new char[size];
-
-        // Go back to the beginning of the file and fill the buffer
         file.seekg(0, std::ios::beg);
         file.read(buffer, size);
         file.close();
 
-        // Load the ROM contents into the Chip8's memory, starting at 0x200
         for (long i = 0; i < size; ++i)
         {
             memory[START_ADDRESS + i] = buffer[i];
         }
 
-        // Free the buffer
         delete[] buffer;
     }
 }
@@ -147,27 +146,48 @@ void Chip8::Cycle()
     }
 }
 
-// CLS: Clear the display
+void Chip8::Table0()
+{
+    ((*this).*(table0[opcode & 0x000Fu]))();
+}
+
+void Chip8::Table8()
+{
+    ((*this).*(table8[opcode & 0x000Fu]))();
+}
+
+void Chip8::TableE()
+{
+    ((*this).*(tableE[opcode & 0x000Fu]))();
+}
+
+void Chip8::TableF()
+{
+    ((*this).*(tableF[opcode & 0x00FFu]))();
+}
+
+void Chip8::OP_NULL()
+{
+}
+
 void Chip8::OP_00E0()
 {
     memset(video, 0, sizeof(video));
 }
 
-// RET: Return from a subroutine
 void Chip8::OP_00EE()
 {
     --sp;
     pc = stack[sp];
 }
 
-// JP addr: Jump to location nnn
 void Chip8::OP_1nnn()
 {
     uint16_t address = opcode & 0x0FFFu;
+
     pc = address;
 }
 
-// CALL addr: Call subroutine at nnn
 void Chip8::OP_2nnn()
 {
     uint16_t address = opcode & 0x0FFFu;
@@ -177,7 +197,6 @@ void Chip8::OP_2nnn()
     pc = address;
 }
 
-// SE Vx, byte: Skip next instruction if Vx = kk
 void Chip8::OP_3xkk()
 {
     uint8_t Vx = (opcode & 0x0F00u) >> 8u;
@@ -189,7 +208,6 @@ void Chip8::OP_3xkk()
     }
 }
 
-// SNE Vx, byte: Skip next instruction if Vx != kk
 void Chip8::OP_4xkk()
 {
     uint8_t Vx = (opcode & 0x0F00u) >> 8u;
@@ -201,7 +219,6 @@ void Chip8::OP_4xkk()
     }
 }
 
-// SE Vx, Vy Skip next instruction if Vx = Vy
 void Chip8::OP_5xy0()
 {
     uint8_t Vx = (opcode & 0x0F00u) >> 8u;
@@ -213,7 +230,6 @@ void Chip8::OP_5xy0()
     }
 }
 
-// LD Vx, byte: Set Vx == kk
 void Chip8::OP_6xkk()
 {
     uint8_t Vx = (opcode & 0x0F00u) >> 8u;

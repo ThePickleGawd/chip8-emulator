@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
 
         auto currentTime = std::chrono::high_resolution_clock::now();
         float dt = std::chrono::duration<float, std::chrono::milliseconds::period>(currentTime - lastCycleTime).count();
-
         if (dt > cycleDelay)
         {
             lastCycleTime = currentTime;

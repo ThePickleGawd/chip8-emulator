@@ -4,6 +4,7 @@ SRC_CHIP8 = src/include/chip8
 # List of source files
 CPP_SRCS = \
 	$(SRC_CHIP8)/chip8.cpp \
+	$(SRC_CHIP8)/platform.cpp \
 	main.cpp
 
 # Compiler flags
